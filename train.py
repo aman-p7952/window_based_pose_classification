@@ -57,12 +57,15 @@ class Net1(nn.Module):
     def __init__(self):
         super(Net1, self).__init__()
         self.main=nn.Sequential(
-        nn.Conv1d(100,100, 32),
+        nn.Conv1d(100,100,5),
+        nn.BatchNorm1d(100),
+        nn.ReLU(),
+        nn.Conv1d(100,100,5),
         nn.BatchNorm1d(100),
         nn.ReLU(),
         nn.Flatten(),
         
-        nn.Linear((132-32+1)*100,3),
+        nn.Linear((132-10+2)*100,3),
         #nn.Softmax()
         )
     def forward(self,x):
