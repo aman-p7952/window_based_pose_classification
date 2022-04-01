@@ -32,6 +32,6 @@ for i in range(len(df)-100):
         out.write(image)
     except Exception as e:
         pass
-image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-plt.imshow(image)
+# image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+# plt.imshow(image)
 out.release()
