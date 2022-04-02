@@ -31,24 +31,28 @@ class PoseDataset(Dataset):
             idx = idx.tolist()
         feature = self.df.iloc[idx:idx+100, 0:132]
         feature = np.array([pd.to_numeric(feature.iloc[i], errors='coerce') for i in range(len(feature))])
-        #feature=feature.reshape((1,-1))
+        #for 1 channel convilution
+        # feature=feature.reshape((1,-1))
+        #for 2D convolution
+        feature=feature.reshape((10,10,-1))
+        
         label = self.df.iloc[idx:idx+100,132]
         label = list(label)
         unique , count =np.unique(label,return_counts=True)
         index=np.argmax(count)
         label=unique[index]
         label=torch.tensor(key[label]).long()
-        sample = {"feature": torch.tensor(feature),"label":label}
+        sample = {"feature": torch.tensor(feature).permute(2, 0, 1),"label":label}
         return sample
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.main=nn.Sequential(
-        nn.Conv1d(1,1, 10*132),
+        nn.Conv1d(1,1, 2*132),
         nn.BatchNorm1d(1),
         nn.ReLU(),
         nn.Flatten(),
-        nn.Linear(100*132-10*132+1,3),
+        nn.Linear(100*132-2*132+1,3),
         #nn.Softmax()
         )
     def forward(self,x):
@@ -60,6 +64,7 @@ class Net1(nn.Module):
         nn.Conv1d(100,100,5),
         nn.BatchNorm1d(100),
         nn.ReLU(),
+        
         nn.Conv1d(100,100,5),
         nn.BatchNorm1d(100),
         nn.ReLU(),
@@ -70,11 +75,27 @@ class Net1(nn.Module):
         )
     def forward(self,x):
         return self.main(x)
+class Conv2Net(nn.Module):
+    def __init__(self):
+        super(Conv2Net, self).__init__()
+        self.main=nn.Sequential(
+        nn.Conv2d(132,100,3,padding=1),
+        nn.BatchNorm2d(100),
+        nn.ReLU(),
+        nn.Conv2d(100,100,3,padding=1),
+        nn.BatchNorm2d(100),
+        nn.ReLU(),
+        nn.Flatten(),
+        nn.Linear(10000,3),
+        #nn.Softmax()
+        )
+    def forward(self,x):
+        return self.main(x)
 dataset=PoseDataset("datayt0.csv")
 dataloader=DataLoader(dataset,2,shuffle=True)
 dataset_test=PoseDataset("data1.csv")
 dataloader_test=DataLoader(dataset_test,2,shuffle=True)
-net=Net1().double()
+net=Conv2Net().double()
 n_epochs=10
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 critarian = nn.CrossEntropyLoss()
