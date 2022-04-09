@@ -6,4 +6,4 @@ python segment.py --input_file 0 --output_file outputvideo.mp4
 where 0 is camera ID, if not working try 1,2,or 3.
 
 # Setting up new conda environment using requirements.txt
-conda create --name <env> --file requirements.txt
+conda create --name env_name --file requirements.txt
