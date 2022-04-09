@@ -7,7 +7,7 @@ Created on Tue Mar 29 18:49:09 2022
 """
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from torch.nn.functional import one_hot
+from model import Conv2Net,key,Net1,Net
 import torch.optim as optim
 import pandas as pd
 import numpy as np
@@ -15,7 +15,8 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 WINDOW=100
-key={"None":0,"squat":1,"back lunge":2}
+# key={"None":0,"squat":1,"back lunge":2}
+key={"None":0,"squats":1,"standing":2,"pushup":3}
 class PoseDataset(Dataset):
     def __init__(self, file):
         self.file = file
@@ -29,80 +30,42 @@ class PoseDataset(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        feature = self.df.iloc[idx:idx+100, 0:132]
+        feature = self.df.iloc[idx:idx+WINDOW, 0:132]
         feature = np.array([pd.to_numeric(feature.iloc[i], errors='coerce') for i in range(len(feature))])
-        #for 1 channel convilution
-        # feature=feature.reshape((1,-1))
-        #for 2D convolution
-        feature=feature.reshape((10,10,-1))
+        #for 1 channel convilution(Net())
+        # feature = feature.reshape((1,-1))
         
-        label = self.df.iloc[idx:idx+100,132]
+        # Net1()
+        # feature=feature.reshape((-1,WINDOW))
+        feature=torch.tensor(feature).permute((1,0))
+        # print(feature.shape)
+        #for 2D convolution(Conv2Net)
+        # feature=feature.reshape((10,10,-1))
+        # feature=torch.tensor(feature).permute(2, 0, 1)
+        
+        label = self.df.iloc[idx:idx+WINDOW,132]
         label = list(label)
         unique , count =np.unique(label,return_counts=True)
         index=np.argmax(count)
         label=unique[index]
         label=torch.tensor(key[label]).long()
-        sample = {"feature": torch.tensor(feature).permute(2, 0, 1),"label":label}
+        sample = {"feature" : feature , "label":label}
         return sample
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.main=nn.Sequential(
-        nn.Conv1d(1,1, 2*132),
-        nn.BatchNorm1d(1),
-        nn.ReLU(),
-        nn.Flatten(),
-        nn.Linear(100*132-2*132+1,3),
-        #nn.Softmax()
-        )
-    def forward(self,x):
-        return self.main(x)
-class Net1(nn.Module):
-    def __init__(self):
-        super(Net1, self).__init__()
-        self.main=nn.Sequential(
-        nn.Conv1d(100,100,5),
-        nn.BatchNorm1d(100),
-        nn.ReLU(),
-        
-        nn.Conv1d(100,100,5),
-        nn.BatchNorm1d(100),
-        nn.ReLU(),
-        nn.Flatten(),
-        
-        nn.Linear((132-10+2)*100,3),
-        #nn.Softmax()
-        )
-    def forward(self,x):
-        return self.main(x)
-class Conv2Net(nn.Module):
-    def __init__(self):
-        super(Conv2Net, self).__init__()
-        self.main=nn.Sequential(
-        nn.Conv2d(132,100,3,padding=1),
-        nn.BatchNorm2d(100),
-        nn.ReLU(),
-        nn.Conv2d(100,100,3,padding=1),
-        nn.BatchNorm2d(100),
-        nn.ReLU(),
-        nn.Flatten(),
-        nn.Linear(10000,3),
-        #nn.Softmax()
-        )
-    def forward(self,x):
-        return self.main(x)
-dataset=PoseDataset("datayt0.csv")
-dataloader=DataLoader(dataset,2,shuffle=True)
-dataset_test=PoseDataset("data1.csv")
-dataloader_test=DataLoader(dataset_test,2,shuffle=True)
-net=Conv2Net().double()
-n_epochs=10
+
+dataset=PoseDataset("data.csv")
+dataloader=DataLoader(dataset,32,shuffle=True,drop_last=True)
+dataset_test=PoseDataset("data_test.csv")
+dataloader_test=DataLoader(dataset_test,32,shuffle=True,drop_last=True)
+net=Net1().double()
+# net.load_state_dict(torch.load("net.pt"))
+n_epochs=5
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 critarian = nn.CrossEntropyLoss()
 train_history = []
 test_history = []
 losses = []
 for epoch in range(n_epochs):
+    net.train()
     for i,sample in enumerate(dataloader):
         # print(sample["feature"].shape)
         # print(sample["label"].shape)
@@ -114,6 +77,7 @@ for epoch in range(n_epochs):
         # print(loss.detach().numpy())
         losses.append((loss.detach().numpy()))
     with torch.no_grad():
+        net.eval()
         correct_train = 0
         total_train = 0
         correct_test = 0
